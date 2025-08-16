@@ -1,0 +1,594 @@
+<!doctype html>
+<html lang="mn">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Бараа борлуулалтын бүртгэл</title>
+<style>
+  :root{--bg:#0b1220;--card:#121a2b;--muted:#8aa0b8;--accent:#4f8cff;--ok:#16a34a;--danger:#ef4444}
+  *{box-sizing:border-box}
+  body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial;background:var(--bg);color:#e5eef7}
+  header{padding:16px 20px;border-bottom:1px solid #24324a}
+  h1{margin:0;font-size:18px;font-weight:600}
+  .wrap{max-width:980px;margin:20px auto;padding:0 14px}
+  .tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}
+  .tabbtn{border:1px solid #2b3b59;background:#0f1726;color:#dbe7fb;border-radius:10px;padding:10px 12px;cursor:pointer}
+  .tabbtn.active{background:var(--accent);border-color:var(--accent);color:#fff}
+  .card{background:var(--card);border:1px solid #24324a;border-radius:14px;padding:14px;margin-bottom:14px}
+  .grid{display:grid;gap:10px}
+  .g2{grid-template-columns:repeat(2,minmax(0,1fr))}
+  label{font-size:13px;color:#aec2da}
+  input,select{width:100%;padding:10px;border-radius:10px;border:1px solid #2b3b59;background:#0f1726;color:#eaf2ff}
+  input[type="number"]{text-align:right}
+  .row{display:flex;gap:10px;flex-wrap:wrap}
+  .btn{border:1px solid #2b3b59;background:#0f1726;color:#eaf2ff;border-radius:10px;padding:10px 12px;cursor:pointer}
+  .btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+  .btn.success{background:var(--ok);border-color:var(--ok)}
+  .btn.danger{background:#2a0f12;border-color:#3e0f14;color:#ffb4b4}
+  table{width:100%;border-collapse:separate;border-spacing:0 8px}
+  th,td{text-align:left;padding:10px 12px}
+  thead th{font-size:12px;color:#9fb5cf}
+  tbody tr{background:#0f1726;border:1px solid #22314d}
+  tbody tr:hover{outline:1px solid #365a9a}
+  td.num{text-align:right}
+  .muted{color:var(--muted);font-size:12px}
+  .pill{display:inline-block;padding:2px 8px;border-radius:999px;font-size:12px;border:1px solid #2b3b59}
+  .pill.purchase{background:#0f1a2b}
+  .pill.payment{background:#102718}
+  .flex-between{display:flex;justify-content:space-between;align-items:center}
+  .pointer{cursor:pointer}
+  .hidden{display:none}
+  .note{font-size:12px;color:#9fb5cf}
+</style>
+</head>
+<body>
+<header><h1>Бараа бүртгэл</h1></header>
+<div class="wrap">
+  <div class="tabs">
+    <button class="tabbtn active" data-tab="balances">Нийт явц</button>
+    <button class="tabbtn" data-tab="purchase">Зээл бүртгэх</button>
+    <button class="tabbtn" data-tab="payment">Төлбөр бүртгэх</button>
+    <button class="tabbtn" data-tab="employees">Ажилчид</button>
+    <button class="tabbtn" data-tab="items">Бараа</button>
+    <button class="tabbtn" data-tab="tools">Тохиргоо</button> 
+  </div>
+
+  <!-- BALANCES -->
+  <section class="card" id="tab-balances">
+    <div class="row" style="justify-content:space-between;align-items:center;margin-bottom:8px">
+      <div class="row" style="align-items:flex-end">
+        <div>
+          <label>Ажилчин шүүх</label>
+          <select id="filterEmployee"></select>
+        </div>
+        <div>
+          <label>Огноо (эхлэх)</label>
+          <input type="date" id="filterStart">
+        </div>
+        <div>
+          <label>Огноо (дуусах)</label>
+          <input type="date" id="filterEnd">
+        </div>
+        <div style="align-self:flex-end">
+          <button class="btn" id="clearFilters">Шүүлт цэвэрлэх</button>
+        </div>
+      </div>
+      <div class="row">
+        <button class="btn" id="quickHalf">Энэ хагас сар</button>
+        <button class="btn" id="quickMonth">Энэ сар</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="flex-between">
+        <div class="muted">Нийт үзүүлэлт</div>
+        <div class="note">Тооцоолол нь шүүлтээс хамаарна</div>
+      </div>
+      <div class="grid g2">
+        <div><div class="muted">Нийт авалт</div><div id="kpiPurch" style="font-size:22px;font-weight:700">0₮</div></div>
+        <div><div class="muted">Нийт төлбөр</div><div id="kpiPay" style="font-size:22px;font-weight:700">0₮</div></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="flex-between">
+        <div class="muted">Ажилчдын үлдэгдэл</div>
+        <div class="note">Мөр дээр дарж түүхийг харах</div>
+      </div>
+      <table>
+        <thead>
+          <tr><th>#</th><th>Ажилчин</th><th class="num">Авалт (₮)</th><th class="num">Төлбөр (₮)</th><th class="num">Үлдэгдэл (₮)</th></tr>
+        </thead>
+        <tbody id="balancesBody"></tbody>
+      </table>
+    </div>
+
+    <div class="card hidden" id="historyCard">
+      <div class="flex-between">
+        <div class="muted">Гүйлгээний түүх: <span id="histEmployeeName"></span></div>
+        <button class="btn" id="closeHistory">Хаах</button>
+      </div>
+      <table>
+        <thead>
+          <tr><th>Огноо</th><th>Төрөл</th><th>Дэлгэрэнгүй</th><th class="num">Дүн (₮)</th></tr>
+        </thead>
+        <tbody id="historyBody"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- PURCHASE -->
+  <section class="card hidden" id="tab-purchase">
+    <h3 style="margin-top:0">Зээл (авалт) бүртгэх</h3>
+    <div class="grid g2">
+      <div>
+        <label>Ажилчин</label>
+        <select id="pEmployee"></select>
+      </div>
+      <div>
+        <label>Огноо</label>
+        <input type="date" id="pDate">
+      </div>
+      <div>
+        <label>Бараа</label>
+        <select id="pItem"></select>
+      </div>
+      <div>
+        <label>Тоо</label>
+        <input type="number" id="pQty" min="1" value="1">
+      </div>
+      <div>
+        <label>Нэгж үнэ (₮)</label>
+        <input type="number" id="pUnit" min="0">
+      </div>
+      <div>
+        <label>Нийт дүн (₮)</label>
+        <input type="number" id="pTotal" readonly>
+      </div>
+    </div>
+    <div class="row" style="margin-top:10px">
+      <button class="btn primary" id="btnAddPurchase">Авалт бүртгэх</button>
+      <div class="note">Барааны үнэ автоматаар орж ирнэ (засаж болно).</div>
+    </div>
+  </section>
+
+  <!-- PAYMENT -->
+  <section class="card hidden" id="tab-payment">
+    <h3 style="margin-top:0">Төлбөр бүртгэх</h3>
+    <div class="grid g2">
+      <div>
+        <label>Ажилчин</label>
+        <select id="payEmployee"></select>
+      </div>
+      <div>
+        <label>Огноо</label>
+        <input type="date" id="payDate">
+      </div>
+      <div>
+        <label>Төлсөн дүн (₮)</label>
+        <input type="number" id="payAmount" min="0">
+      </div>
+      <div>
+        <label>Тайлбар (сонголттой)</label>
+        <input type="text" id="payNote" placeholder="ж: 15 хоногийн төлбөр">
+      </div>
+    </div>
+    <div class="row" style="margin-top:10px">
+      <button class="btn success" id="btnAddPayment">Төлбөр бүртгэх</button>
+    </div>
+  </section>
+
+  <!-- EMPLOYEES -->
+  <section class="card hidden" id="tab-employees">
+    <div class="row" style="justify-content:space-between;align-items:end">
+      <h3 style="margin:0">Ажилчид</h3>
+      <div class="note">Гүйлгээтэй ажилчныг устгах бол эхлээд гүйлгээг шалгаарай.</div>
+    </div>
+    <div class="grid g2">
+      <div>
+        <label>Нэр</label>
+        <input id="empName" placeholder="ж: Батболд">
+      </div>
+      <div style="align-self:end">
+        <button class="btn primary" id="btnAddEmp">Нэмэх</button>
+      </div>
+    </div>
+    <table style="margin-top:10px">
+      <thead><tr><th>#</th><th>Нэр</th><th></th></tr></thead>
+      <tbody id="empBody"></tbody>
+    </table>
+  </section>
+
+  <!-- ITEMS -->
+  <section class="card hidden" id="tab-items">
+    <h3 style="margin-top:0">Бараа</h3>
+    <div class="grid g2">
+      <div>
+        <label>Барааны нэр</label>
+        <input id="itemName" placeholder="ж: Кола 500мл">
+      </div>
+      <div>
+        <label>Нэгж үнэ (₮)</label>
+        <input type="number" id="itemPrice" min="0" placeholder="ж: 2500">
+      </div>
+      <div style="grid-column:1/-1">
+        <button class="btn primary" id="btnAddItem">Нэмэх</button>
+      </div>
+    </div>
+    <table style="margin-top:10px">
+      <thead><tr><th>#</th><th>Бараа</th><th class="num">Үнэ (₮)</th><th></th></tr></thead>
+      <tbody id="itemBody"></tbody>
+    </table>
+  </section>
+
+  <!-- TOOLS -->
+  <section class="card hidden" id="tab-tools">
+    <h3 style="margin-top:0">Тохиргоо / Нөөцлөлт</h3>
+    <div class="row">
+      <button class="btn" id="btnExport">Нөөц (JSON) татах</button>
+      <input type="file" id="importFile" accept="application/json" class="btn">
+      <button class="btn danger" id="btnWipe">Бүх өгөгдлийг цэвэрлэх</button>
+    </div>
+    <p class="note">LocalStorage ашигладаг. Нөөц файлаа хадгалж байгаарай.</p>
+  </section>
+</div>
+
+<script>
+(function(){
+  const storeKey = 'simpleCreditV1';
+
+  const state = load() || {
+    employees: [],
+    items: [],
+    txns: [] // {id, type:'purchase'|'payment', employeeId, date, itemId?, qty?, unitPrice?, amount, note?}
+  };
+
+  // ---------- Utilities ----------
+  const $ = s => document.querySelector(s);
+  const el = (tag, props={}, children=[])=>{
+    const e = document.createElement(tag);
+    Object.assign(e, props);
+    children.forEach(c => e.appendChild(typeof c==='string'?document.createTextNode(c):c));
+    return e;
+  };
+  const uid = ()=>'id_'+Math.random().toString(36).slice(2,9);
+  const today = ()=> new Date().toISOString().slice(0,10);
+  const fmt = n => (Number(n)||0).toLocaleString('mn-MN')+'₮';
+
+  function save(){ localStorage.setItem(storeKey, JSON.stringify(state)); }
+  function load(){ try{ return JSON.parse(localStorage.getItem(storeKey)); }catch(e){ return null; } }
+
+  // ---------- Tabs ----------
+  const tabs = document.querySelectorAll('.tabbtn');
+  tabs.forEach(b=>b.addEventListener('click', ()=>{
+    tabs.forEach(x=>x.classList.remove('active'));
+    b.classList.add('active');
+    const tab = b.dataset.tab;
+    document.querySelectorAll('section.card').forEach(s=>s.classList.add('hidden'));
+    $('#tab-'+tab).classList.remove('hidden');
+    // refresh data on enter tab
+    if(tab==='balances'){ renderFilters(); renderBalances(); }
+    if(tab==='purchase'){ fillSelects(); $('#pDate').value = today(); calcPurchaseTotal(); }
+    if(tab==='payment'){ fillSelects(); $('#payDate').value = today(); }
+    if(tab==='employees'){ renderEmployees(); }
+    if(tab==='items'){ renderItems(); }
+  }));
+
+  // ---------- Employees ----------
+  $('#btnAddEmp').addEventListener('click', ()=>{
+    const name = $('#empName').value.trim();
+    if(!name) return alert('Нэр оруулна уу');
+    state.employees.push({id:uid(), name});
+    $('#empName').value='';
+    save(); renderEmployees(); fillSelects(); renderBalances();
+  });
+
+  function deleteEmployee(id){
+    const hasTxn = state.txns.some(t=>t.employeeId===id);
+    if(hasTxn && !confirm('Энэ ажилчинд гүйлгээ байна. Устгах уу?')) return;
+    state.employees = state.employees.filter(e=>e.id!==id);
+    save(); renderEmployees(); fillSelects(); renderBalances();
+  }
+
+  function renderEmployees(){
+    const body = $('#empBody'); body.innerHTML='';
+    state.employees.forEach((e,i)=>{
+      const tr = el('tr',{},[
+        el('td',{},[String(i+1)]),
+        el('td',{},[e.name]),
+        el('td',{},[el('button',{className:'btn danger', onclick:()=>deleteEmployee(e.id)},['Устгах'])])
+      ]);
+      body.appendChild(tr);
+    });
+  }
+
+  // ---------- Items ----------
+  $('#btnAddItem').addEventListener('click', ()=>{
+    const name = $('#itemName').value.trim();
+    const price = Number($('#itemPrice').value);
+    if(!name) return alert('Барааны нэр оруулна уу');
+    if(!(price>=0)) return alert('Үнэ зөв оруулна уу');
+    state.items.push({id:uid(), name, price});
+    $('#itemName').value=''; $('#itemPrice').value='';
+    save(); renderItems(); fillSelects();
+  });
+
+  function deleteItem(id){
+    const used = state.txns.some(t=>t.type==='purchase' && t.itemId===id);
+    if(used && !confirm('Энэ бараагаар авалт бүртгэлтэй. Устгах уу?')) return;
+    state.items = state.items.filter(it=>it.id!==id);
+    save(); renderItems(); fillSelects();
+  }
+
+  function renderItems(){
+    const body = $('#itemBody'); body.innerHTML='';
+    state.items.forEach((it,i)=>{
+      const tr = el('tr',{},[
+        el('td',{},[String(i+1)]),
+        el('td',{},[it.name]),
+        el('td',{className:'num'},[fmt(it.price)]),
+        el('td',{},[el('button',{className:'btn danger', onclick:()=>deleteItem(it.id)},['Устгах'])])
+      ]);
+      body.appendChild(tr);
+    });
+  }
+
+  function fillSelects(){
+    // employees
+    const empOptions = ['<option value="">— сонгох —</option>']
+      .concat(state.employees.map(e=>`<option value="${e.id}">${escapeHtml(e.name)}</option>`));
+    ['pEmployee','payEmployee','filterEmployee'].forEach(id=>{
+      const s = $('#'+id);
+      s.innerHTML = id==='filterEmployee' ? ['<option value="">Бүгд</option>', ...empOptions.slice(1)].join('') : empOptions.join('');
+    });
+    // items
+    const itemOptions = ['<option value="">— сонгох —</option>']
+      .concat(state.items.map(it=>`<option value="${it.id}" data-price="${it.price}">${escapeHtml(it.name)}</option>`));
+    $('#pItem').innerHTML = itemOptions.join('');
+  }
+
+  // ---------- Purchases ----------
+  $('#pItem').addEventListener('change', ()=>{
+    const opt = $('#pItem').selectedOptions[0];
+    const price = opt && opt.dataset.price ? Number(opt.dataset.price) : 0;
+    $('#pUnit').value = price || '';
+    calcPurchaseTotal();
+  });
+  ['pQty','pUnit'].forEach(id=>$('#'+id).addEventListener('input', calcPurchaseTotal));
+
+  function calcPurchaseTotal(){
+    const qty = Number($('#pQty').value)||0;
+    const unit = Number($('#pUnit').value)||0;
+    $('#pTotal').value = (qty*unit) || 0;
+  }
+
+  $('#btnAddPurchase').addEventListener('click', ()=>{
+    const employeeId = $('#pEmployee').value;
+    const itemId = $('#pItem').value;
+    const qty = Number($('#pQty').value);
+    const unitPrice = Number($('#pUnit').value);
+    const date = $('#pDate').value || today();
+    if(!employeeId) return alert('Ажилчин сонгоно уу');
+    if(!itemId) return alert('Бараа сонгоно уу');
+    if(!(qty>0)) return alert('Тоо зөв оруулна уу');
+    if(!(unitPrice>=0)) return alert('Үнэ зөв оруулна уу');
+
+    const amount = qty*unitPrice;
+    state.txns.push({id:uid(), type:'purchase', employeeId, date, itemId, qty, unitPrice, amount});
+    save();
+    // reset quick
+    $('#pQty').value = 1; calcPurchaseTotal();
+    renderBalances();
+    alert('Авалт бүртгэгдлээ');
+  });
+
+  // ---------- Payments ----------
+  $('#btnAddPayment').addEventListener('click', ()=>{
+    const employeeId = $('#payEmployee').value;
+    const amount = Number($('#payAmount').value);
+    const note = $('#payNote').value.trim();
+    const date = $('#payDate').value || today();
+    if(!employeeId) return alert('Ажилчин сонгоно уу');
+    if(!(amount>0)) return alert('Дүн зөв оруулна уу');
+
+    state.txns.push({id:uid(), type:'payment', employeeId, date, amount, note});
+    save();
+    $('#payAmount').value=''; $('#payNote').value='';
+    renderBalances();
+    alert('Төлбөр бүртгэгдлээ');
+  });
+
+  // ---------- Balances / Filters ----------
+  function renderFilters(){
+    fillSelects();
+    if(!$('#filterStart').value) $('#filterStart').value = '';
+    if(!$('#filterEnd').value) $('#filterEnd').value = '';
+  }
+
+  $('#clearFilters').addEventListener('click', ()=>{
+    $('#filterEmployee').value='';
+    $('#filterStart').value='';
+    $('#filterEnd').value='';
+    renderBalances();
+  });
+
+  $('#quickHalf').addEventListener('click', ()=>{
+    const d = new Date();
+    const y = d.getFullYear(), m = d.getMonth();
+    const half = d.getDate()<=15 ? 1 : 2;
+    const start = new Date(y, m, half===1?1:16);
+    const end = new Date(y, m, half===1?15:new Date(y,m+1,0).getDate());
+    $('#filterStart').value = toISODate(start);
+    $('#filterEnd').value = toISODate(end);
+    renderBalances();
+  });
+  $('#quickMonth').addEventListener('click', ()=>{
+    const d = new Date();
+    const start = new Date(d.getFullYear(), d.getMonth(), 1);
+    const end = new Date(d.getFullYear(), d.getMonth()+1, 0);
+    $('#filterStart').value = toISODate(start);
+    $('#filterEnd').value = toISODate(end);
+    renderBalances();
+  });
+
+  ['filterEmployee','filterStart','filterEnd'].forEach(id=>{
+    $('#'+id).addEventListener('change', renderBalances);
+  });
+
+  function filteredTxns(){
+    const emp = $('#filterEmployee').value || null;
+    const s = $('#filterStart').value ? new Date($('#filterStart').value) : null;
+    const e = $('#filterEnd').value ? new Date($('#filterEnd').value) : null;
+
+    return state.txns.filter(t=>{
+      if(emp && t.employeeId!==emp) return false;
+      const td = new Date(t.date);
+      if(s && td < new Date(s.getFullYear(),s.getMonth(),s.getDate())) return false;
+      if(e && td > new Date(e.getFullYear(),e.getMonth(),e.getDate(),23,59,59,999)) return false;
+      return true;
+    }).sort((a,b)=> a.date.localeCompare(b.date));
+  }
+
+  function totalsByEmployee(txns){
+    const map = new Map();
+    txns.forEach(t=>{
+      if(!map.has(t.employeeId)) map.set(t.employeeId,{p:0,pay:0});
+      const o = map.get(t.employeeId);
+      if(t.type==='purchase') o.p += t.amount||0;
+      else o.pay += t.amount||0;
+    });
+    return map;
+  }
+
+  function renderBalances(){
+    const tx = filteredTxns();
+    const tmap = totalsByEmployee(tx);
+    const body = $('#balancesBody'); body.innerHTML='';
+
+    let kPurch=0, kPay=0, i=0;
+    const emps = $('#filterEmployee').value ? state.employees.filter(e=>e.id===$('#filterEmployee').value) : state.employees;
+
+    emps.forEach(e=>{
+      const t = tmap.get(e.id) || {p:0,pay:0};
+      kPurch += t.p; kPay += t.pay;
+      const bal = t.p - t.pay;
+      const tr = el('tr',{className:'pointer', onclick:()=>openHistory(e.id)},[
+        el('td',{},[String(++i)]),
+        el('td',{},[e.name]),
+        el('td',{className:'num'},[fmt(t.p)]),
+        el('td',{className:'num'},[fmt(t.pay)]),
+        el('td',{className:'num'},[fmt(bal)])
+      ]);
+      body.appendChild(tr);
+    });
+
+    $('#kpiPurch').textContent = fmt(kPurch);
+    $('#kpiPay').textContent = fmt(kPay);
+  }
+
+  function openHistory(empId){
+    const emp = state.employees.find(e=>e.id===empId);
+    if(!emp) return;
+    $('#histEmployeeName').textContent = emp.name;
+    $('#historyCard').classList.remove('hidden');
+    const s = $('#filterStart').value, e = $('#filterEnd').value;
+    const tx = filteredTxns().filter(t=>t.employeeId===empId);
+    const body = $('#historyBody'); body.innerHTML='';
+
+    tx.forEach(t=>{
+      const typePill = el('span',{className:'pill '+(t.type==='purchase'?'purchase':'payment')},[t.type==='purchase'?'Авалт':'Төлбөр']);
+      let detail='', amount=0;
+      if(t.type==='purchase'){
+        const it = state.items.find(x=>x.id===t.itemId);
+        detail = `${it?it.name:'Бараа'} × ${t.qty} @ ${fmt(t.unitPrice)}`;
+        amount = t.amount;
+      } else {
+        detail = t.note||'';
+        amount = t.amount;
+      }
+      const tr = el('tr',{},[
+        el('td',{},[t.date]),
+        el('td',{},[typePill]),
+        el('td',{},[detail]),
+        el('td',{className:'num'},[fmt(amount)])
+      ]);
+      body.appendChild(tr);
+    });
+  }
+  $('#closeHistory').addEventListener('click', ()=>$('#historyCard').classList.add('hidden'));
+
+  // ---------- Tools (Export / Import / Wipe) ----------
+  $('#btnExport').addEventListener('click', ()=>{
+    const blob = new Blob([JSON.stringify(state,null,2)],{type:'application/json'});
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'zeel-burtgel-backup.json';
+    a.click();
+    URL.revokeObjectURL(a.href);
+  });
+
+  $('#importFile').addEventListener('change', (e)=>{
+    const f = e.target.files[0];
+    if(!f) return;
+    const r = new FileReader();
+    r.onload = ()=>{
+      try{
+        const data = JSON.parse(r.result);
+        if(!data || !Array.isArray(data.employees) || !Array.isArray(data.items) || !Array.isArray(data.txns)){
+          throw new Error('Буруу бүтэц');
+        }
+        state.employees = data.employees;
+        state.items = data.items;
+        state.txns = data.txns;
+        save(); initRender();
+        alert('Амжилттай сэргэлээ');
+      }catch(err){
+        alert('Импорт алдаа: '+err.message);
+      }
+    };
+    r.readAsText(f);
+  });
+
+  $('#btnWipe').addEventListener('click', ()=>{
+    if(confirm('Бүх өгөгдлийг устгах уу?')){
+      localStorage.removeItem(storeKey);
+      state.employees=[]; state.items=[]; state.txns=[];
+      initRender();
+      alert('Цэвэрлэгдлээ');
+    }
+  });
+
+  // ---------- helpers ----------
+  function escapeHtml(s){ return s.replace(/[&<>"']/g, m=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[m])); }
+  function toISODate(d){ return d.toISOString().slice(0,10); }
+
+  function initRender(){
+    fillSelects();
+    renderEmployees();
+    renderItems();
+    renderBalances();
+    $('#pDate').value = today();
+    $('#payDate').value = today();
+  }
+
+  // Seed example data if empty (optional for first-time)
+  if(state.employees.length===0 && state.items.length===0 && state.txns.length===0){
+    state.employees = [{id:uid(), name:'Бат'},{id:uid(), name:'Сараа'}];
+    const e1 = state.employees[0].id, e2 = state.employees[1].id;
+    state.items = [{id:uid(), name:'Кола 500мл', price:2500},{id:uid(), name:'Тамхи', price:6000},{id:uid(), name:'Чипс', price:3500}];
+    const i1 = state.items[0].id, i2 = state.items[1].id;
+    state.txns = [
+      {id:uid(), type:'purchase', employeeId:e1, date:today(), itemId:i1, qty:2, unitPrice:2500, amount:5000},
+      {id:uid(), type:'payment', employeeId:e1, date:today(), amount:3000, note:'Эхний төлбөр'},
+      {id:uid(), type:'purchase', employeeId:e2, date:today(), itemId:i2, qty:1, unitPrice:6000, amount:6000},
+    ];
+    save();
+  }
+
+  // boot
+  initRender();
+
+})();
+</script>
+</body>
+</html>
